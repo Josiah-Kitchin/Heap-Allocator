@@ -67,7 +67,7 @@ void* heapm(size_t num_elements, size_t size) {
     size_t size_requested = num_elements * size; 
     size = align_size(size_requested);
 
-    Block* block = get_free_block(&free_list, size);
+    Block* block = first_fit(&free_list, size);
     if (block == NULL) 
         block = allocate_block(size_requested);
     
@@ -82,7 +82,6 @@ void freem(void* mem) {
      *     Adds this block to the free list for later use
      */ 
     Block* block = get_block_memory(mem);
-    block->next = free_list; 
-    free_list = block; 
+    add_block(&free_list, block);
 }
 

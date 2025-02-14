@@ -18,6 +18,9 @@ typedef struct Block {
     struct Block* next; 
 } Block; 
 
-Block* get_free_block(Block** free_list, size_t size); 
+// Add a block ot the free list 
+void add_block(Block** free_list, Block* block);
+// Find the first block that fits the required size 
+Block* first_fit(Block** free_list, size_t size); 
 
 #endif
