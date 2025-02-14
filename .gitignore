@@ -1,0 +1,4 @@
+
+build/*
+tests/build*
+performance_tests/build/*
