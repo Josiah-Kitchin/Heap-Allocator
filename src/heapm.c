@@ -35,26 +35,6 @@ static Block* allocate_block(size_t size) {
     return block_memory; 
 }
 
-static void* get_usable_memory(Block* block_header) { 
-    /* Return the usable memory that comes after the block metadata
-     * Parameters: 
-     *     block_header: Start of the allocated memory containing block metadata 
-     * Returns: 
-     *     pointer to useable memory 
-     */     
-    return (void*)((char*)block_header + sizeof(Block));
-}
-
-static Block* get_block_memory(void* memory) { 
-    /* Return a pointer to the block header meta data pointer
-     * Parameters: 
-     *     memory: Start of the usable memory 
-     * Returns: 
-     *     pointer to block header metadata of usable memory
-     */     
-    return (Block*)((char*)memory - sizeof(Block));
-}
-
 void* heapm(size_t num_elements, size_t size) { 
     /* Memory allocation API function 
      * Parameters: 

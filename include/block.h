@@ -23,4 +23,10 @@ void add_block(Block** free_list, Block* block);
 // Find the first block that fits the required size 
 Block* first_fit(Block** free_list, size_t size); 
 
+// Returns a pointer to the usable memory section after the block header
+// given a pointer to the block 
+void* get_usable_memory(Block* block_header);  
+// Returns a pointer to the block header given a pointer to the usable memory section
+Block* get_block_memory(void* memory);  
+
 #endif
