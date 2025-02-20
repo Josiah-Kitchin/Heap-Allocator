@@ -44,24 +44,51 @@ static bool is_mergable(Block* first_block, Block* second_block) {
     return second_block == (Block*)((char*)first_block+ sizeof(Block) + first_block->size); 
 }
 
-static Block* merge_block(Block* first_block, Block* second_block) { 
+static void merge_block(Block* first_block, Block* second_block) { 
     /* Merge two blocks together, assuming they are consecutive in memory location 
      * The new size of the block will be the left blocks size + right blocks size + sizeof(Block), 
      * since we can now use the space previously occupied by the block header
      * Parameters: 
      *     first_block: First block in memory to be merged
      *     right_block: Second block in memory to be merged
-     * Returns: 
-     *     A pointer to the first block, with size increased to cover the second block
+     * Side effect: 
+     *     Changes the size of the first block to fill the size of the second block. 
+     *     Any pointer to the second block should no longer be used 
+     *    
      */
-    first_block->size = sizeof(Block) + second_block->size; 
-    return first_block; 
+    first_block->size += sizeof(Block) + second_block->size; 
+}
+
+static void remove_block(Block** free_list, Block* block) {
+    /* Remove a block from the free list by changing the previous and next pointers 
+     * Parameters: 
+     *     free_list: linked list of free blocks 
+     *     block: Block to remove from the free list 
+     * Side Effect: 
+     *     Removes block from the free list, it must be called only when it is 
+     *     present in the free list 
+     * */  
+
+    // Case if block is first block in free list 
+    if (block->prev == NULL) {
+        *free_list = block->next; 
+    } else { 
+        block->prev->next = block->next; 
+    }
+
+    if (block->next) { 
+        block->next->prev = block->prev; 
+    }
+    block->prev = NULL;
+    block->next = NULL;
 }
 
 void add_block(Block** free_list, Block* block) { 
     /* Add a block to the free list, indicating the block of memory
      * is not in use and may be used later */ 
     block->next = *free_list; 
+    block->next->prev = block; 
+    block->prev = NULL; 
     *free_list = block; 
 }
 
@@ -77,6 +104,10 @@ static void merge_blocks(Block** free_list) {
     while (current != NULL && current->next != NULL) { 
         if (is_mergable(current, current->next)) { 
             merge_block(current, current->next);
+            // Current was merged with the next block, 
+            // set its next to the block after the block merged 
+            current->next = current->next->next; 
+            continue; 
         }
         current = current->next; 
     }
@@ -94,32 +125,24 @@ Block* first_fit(Block** free_list, size_t usable_mem_size) {
      * Side effects: 
      *     Removes the returned block from the free list (if appropiate block is found)
      */ 
-    Block* prev = NULL; 
+    merge_blocks(free_list);
+
     Block* current = *free_list; 
 
     while (current != NULL) { 
-        if (current->size >= usable_mem_size) { 
-            if (prev == NULL) {
-                *free_list = current->next; 
-            } else { 
-                prev->next = current->next; 
-            }
-
-            if (is_splittable(current, usable_mem_size)) { 
-                Block* left_over = split_block(current, usable_mem_size);
-                add_block(free_list, left_over);
-            }
-
-            current->next = NULL; 
-            return current; 
+        if (current->size < usable_mem_size) { 
+            // Size is not adequate, keep searching 
+            current = current->next; 
+            continue; 
         }
-        // Searching next block 
-        prev = current; 
-        current = current->next; 
+        if (is_splittable(current, usable_mem_size)) { 
+            Block* left_over = split_block(current, usable_mem_size);
+            add_block(free_list, left_over);
+        }
+        remove_block(free_list, current);
+        return current; 
     }
 
-    merge_blocks(free_list);
-    // Block not found 
     return NULL; 
 }
 
