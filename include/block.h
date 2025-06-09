@@ -17,6 +17,8 @@ typedef struct Block {
     size_t size; 
     struct Block* next; 
     struct Block* prev; 
+    bool is_mmaped; 
+    
 } Block; 
 
 /* ------ Fit algorithms ----- */ 

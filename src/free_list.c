@@ -2,6 +2,7 @@
 
 #include "block.h"
 
+
 Block* first_fit(Block** free_list, size_t usable_mem_size) { 
     /* Used to reuse blocks that are already allocated and are of appropiate size 
      * The first block to fit will be returned 

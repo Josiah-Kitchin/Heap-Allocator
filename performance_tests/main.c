@@ -1,18 +1,17 @@
 
 #include "heapm.h"
-#include <stdio.h> 
 
+#define SIZE 100
 
-int main() { 
+int main() 
+{ 
 
-    int* array = heapm(sizeof(int), 10);
-    for (int i = 0; i < 10; i++) { 
-        array[i] = 5; 
-    }
-    for (int i = 0; i < 10; i++) { 
-        printf("%d\n", array[i]);
-    }
+    int* arr = heapm(sizeof(int), SIZE);
 
+    for (int i = 0; i < SIZE; i++)
+        arr[i] = i; 
+
+    freem(arr);
 
     return 0; 
 }

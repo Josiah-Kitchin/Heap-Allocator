@@ -2,12 +2,23 @@
 
 #include "heapm.h"
 #include "block.h"
+#include "bucket.h"
+#include <stdint.h> 
 #include <sys/mman.h> 
+#include <unistd.h> 
 
-// Linked list of free blocks 
-static Block* free_list = NULL; 
 
-static size_t align_size(size_t size) { 
+#define NUM_BUCKETS 3
+#define LARGE_BLOCK_SIZE 196000 
+
+static Bucket buckets[NUM_BUCKETS] = {
+    {NULL, 64}, 
+    {NULL, 128},
+    {NULL, -1}
+};
+
+static size_t align_size(size_t size) 
+{ 
     /* Aligin a size to fit in the block header 
      * Rounds the size to the next multiple of sizeof(Block)
      */ 
@@ -25,17 +36,42 @@ static Block* allocate_block(size_t size) {
      *     the block metadata
      *     NULL if the allocation fails 
      */ 
-    size = align_size(size);
-    Block* block_memory = mmap(NULL, size + sizeof(Block), 
-                               PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-    if (block_memory == MAP_FAILED)  
-        return NULL; 
+    Block* block_memory; 
+    if (size >= LARGE_BLOCK_SIZE)
+    {
+        block_memory = mmap(NULL, size + sizeof(Block), 
+                                   PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+        if (block_memory == MAP_FAILED)  
+            return NULL; 
+        block_memory->is_mmaped = true; 
+        return block_memory; 
+    }
+    else
+    {
+        block_memory = sbrk(size + sizeof(Block));
+        block_memory->is_mmaped = false; 
+        if (block_memory == NULL)
+            return NULL; 
+    }
+
     block_memory->size = size; 
     block_memory->next = NULL; 
     return block_memory; 
 }
 
-void* heapm(size_t num_elements, size_t size) { 
+
+static Bucket* find_bucket(size_t size) { 
+    size_t i; 
+    for (i = 0; i < NUM_BUCKETS - 1; ++i) 
+    { 
+        if (size > buckets[i].byte_size) 
+            continue; 
+    }
+    return &(buckets[i]); 
+}
+
+void* heapm(size_t num_elements, size_t size) 
+{ 
     /* Memory allocation API function 
      * Parameters: 
      *     num_elements: Number of items of bytes 'size' the user wants allocated 
@@ -45,16 +81,18 @@ void* heapm(size_t num_elements, size_t size) {
      *     NULL if the allocation was unsuccessfull
      */ 
     size_t size_requested = num_elements * size; 
-    size = align_size(size_requested);
+    size_t new_size = align_size(size_requested);
 
-    Block* block = first_fit(&free_list, size);
+    Bucket* bucket = find_bucket(new_size);
+    Block* block = first_fit(&(bucket->free_list), size);
     if (block == NULL) 
-        block = allocate_block(size_requested);
+        block = allocate_block(new_size);
     
     return block == NULL ? NULL : get_usable_memory(block);
 }
 
-void freem(void* mem) { 
+void freem(void* mem) 
+{ 
     /* Add a memory block to the free list
      * Parameters: 
      *     mem: Pointer to the usable section of memory
@@ -62,6 +100,13 @@ void freem(void* mem) {
      *     Adds this block to the free list for later use
      */ 
     Block* block = get_block_memory(mem);
-    add_block(&free_list, block);
+    if (block->is_mmaped) 
+    { 
+        munmap(block, block->size + sizeof(Block));
+        return; 
+    }
+
+    Bucket* bucket = find_bucket(block->size);
+    add_block(&(bucket->free_list), block);
 }
 

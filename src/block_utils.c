@@ -129,7 +129,9 @@ void add_block(Block** free_list, Block* block) {
     /* Add a block to the free list, indicating the block of memory
      * is not in use and may be used later */ 
     block->next = *free_list; 
-    block->next->prev = block; 
+    if (block->next != NULL) { 
+        block->next->prev = block; 
+    }
     block->prev = NULL; 
     *free_list = block; 
 }
